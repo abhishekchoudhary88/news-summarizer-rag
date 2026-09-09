@@ -1,4 +1,4 @@
-    """
+"""
 News RAG Chatbot - Main App (v6 - Animated, ChatGPT-style Polished UI)
 --------------------------------------------------------------------------
 New in this version:
