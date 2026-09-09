@@ -1,4 +1,4 @@
-"""
+    """
 News RAG Chatbot - Main App (v6 - Animated, ChatGPT-style Polished UI)
 --------------------------------------------------------------------------
 New in this version:
@@ -168,10 +168,33 @@ if "logged_in" not in st.session_state:
 if "user_email" not in st.session_state:
     st.session_state.user_email = None
 
+# Google OAuth se login (Streamlit ka built-in st.login/st.user) - agar
+# user Google se pehle se logged in hai (secrets.toml configured hone par)
+google_logged_in = False
+try:
+    if st.user.is_logged_in:
+        google_logged_in = True
+        st.session_state.logged_in = True
+        st.session_state.user_email = st.user.email
+        st.session_state.login_method = "google"
+except Exception:
+    # st.user tab error deta hai jab [auth] secrets.toml mein configure nahi hai -
+    # tab sirf email/password login available rahega
+    pass
+
 if not st.session_state.logged_in:
     st.markdown('<p class="welcome-icon" style="text-align:center;">🦉</p>', unsafe_allow_html=True)
     st.markdown('<p class="app-title" style="text-align:center;">News Summarizer</p>', unsafe_allow_html=True)
     st.markdown('<p class="app-subtitle" style="text-align:center;">Sign in to start chatting with your news</p>', unsafe_allow_html=True)
+
+    # Google login button - sirf tab dikhega jab secrets.toml mein [auth] configured ho
+    try:
+        st.button("🔵 Continue with Google", use_container_width=True,
+                   on_click=lambda: st.login("google"))
+        st.markdown('<p style="text-align:center; color:#94A3B8; font-size:0.8rem;">or</p>',
+                    unsafe_allow_html=True)
+    except Exception:
+        pass
 
     login_tab, signup_tab = st.tabs(["Log In", "Sign Up"])
 
@@ -185,6 +208,7 @@ if not st.session_state.logged_in:
                 if success:
                     st.session_state.logged_in = True
                     st.session_state.user_email = login_email.strip().lower()
+                    st.session_state.login_method = "email"
                     st.rerun()
                 else:
                     st.error(message)
@@ -287,11 +311,21 @@ with st.sidebar:
     st.markdown("### 🦉 News Summarizer")
     st.caption(f"👤 {st.session_state.user_email}")
     if st.button("🚪 Log out", use_container_width=True):
+        if st.session_state.get("login_method") == "google":
+            st.logout()
         st.session_state.logged_in = False
         st.session_state.user_email = None
         st.rerun()
 
+    # Gemini key - check environment variable (local .env) AND st.secrets
+    # (Streamlit Cloud secrets), taaki chahe kahin bhi set ki ho, mil jaaye
     saved_key = os.environ.get("GEMINI_API_KEY", "")
+    if not saved_key:
+        try:
+            saved_key = st.secrets.get("GEMINI_API_KEY", "")
+        except Exception:
+            saved_key = ""
+
     if saved_key:
         api_key = saved_key
     else:
