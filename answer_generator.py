@@ -15,6 +15,7 @@ nahi hai toh general knowledge se answer, clearly label karke.
 """
 
 from google import genai
+from datetime import datetime
 
 MAX_HISTORY_TURNS = 3  # Kitne purane Q&A pairs context mein include karne hain
 
@@ -53,8 +54,11 @@ def generate_answer(query, retrieved_chunks, api_key, chat_history=None):
         context = "\n\n".join(context_parts)
 
     history_text = format_chat_history(chat_history or [])
+    today_str = datetime.now().strftime("%A, %d %B %Y")
 
-    prompt = f"""Neeche conversation history, kuch recent news articles, aur ek naya sawaal diya gaya hai.
+    prompt = f"""Aaj ki actual date hai: {today_str}
+
+Neeche conversation history, kuch recent news articles, aur ek naya sawaal diya gaya hai.
 
 PREVIOUS CONVERSATION:
 {history_text}
@@ -65,13 +69,15 @@ NEWS ARTICLES:
 NEW QUESTION: {query}
 
 INSTRUCTIONS:
-1. Agar naya sawaal previous conversation se related hai (jaise "aur batao", "uska matlab kya hai"),
+1. Agar user aaj ki date/din puche, seedha upar di gayi actual date se jawab do - kisi
+   news article ki zaroorat nahi hai iske liye.
+2. Agar naya sawaal previous conversation se related hai (jaise "aur batao", "uska matlab kya hai"),
    toh conversation history ko context ke roop mein use karo.
-2. Pehle check karo ki news articles mein is sawaal ka answer hai ya nahi.
-3. Agar HAI, toh un articles ke basis pe answer do, shuru mein likho "(News ke basis par)".
-4. Agar NAHI hai, toh apne general knowledge se answer do, shuru mein likho
+3. Pehle check karo ki news articles mein is sawaal ka answer hai ya nahi.
+4. Agar HAI, toh un articles ke basis pe answer do, shuru mein likho "(News ke basis par)".
+5. Agar NAHI hai, toh apne general knowledge se answer do, shuru mein likho
    "(General knowledge se, live news mein nahi mila)".
-5. Answer clear aur concise rakho.
+6. Answer clear aur concise rakho.
 
 Answer:"""
 
