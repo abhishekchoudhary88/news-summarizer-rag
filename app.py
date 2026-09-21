@@ -281,7 +281,7 @@ if "sessions" not in st.session_state:
 
 def do_fetch_news(feeds):
     with st.spinner("Fetching latest news..."):
-        articles = fetch_articles(feeds, limit_per_feed=15)
+        articles, errors = fetch_articles(feeds, limit_per_feed=15)
         if articles:
             st.session_state.rag_store.build_index(articles)
             st.session_state.news_loaded = True
@@ -290,7 +290,8 @@ def do_fetch_news(feeds):
             st.session_state.raw_articles = articles
             st.session_state.suggestions = generate_dynamic_suggestions(articles)
         else:
-            st.error("Could not fetch articles. Check your internet connection.")
+            st.error("Could not fetch any articles. All sources failed.")
+        st.session_state.last_fetch_errors = errors
 
 
 def start_new_chat():
@@ -341,6 +342,11 @@ with st.sidebar:
 
     if st.session_state.news_loaded:
         st.caption(f"{st.session_state.get('article_count', 0)} articles • updated {st.session_state.last_fetch_time}")
+
+    if st.session_state.get("last_fetch_errors"):
+        with st.expander(f"⚠️ {len(st.session_state.last_fetch_errors)} source(s) had issues"):
+            for err in st.session_state.last_fetch_errors:
+                st.caption(f"• {err}")
 
     # ---- Chat History List ----
     st.markdown('<p class="sidebar-section-label">Recent</p>', unsafe_allow_html=True)
