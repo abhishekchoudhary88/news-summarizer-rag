@@ -21,7 +21,6 @@ from sentence_transformers import SentenceTransformer
 from news_fetcher import fetch_articles, RSS_FEEDS
 from rag_pipeline import NewsRAGStore, EMBEDDING_MODEL_NAME
 from answer_generator import generate_answer
-import auth
 
 load_dotenv()
 
@@ -162,77 +161,6 @@ st.markdown("""
 DEFAULT_SESSION_TITLE = "Untitled conversation"
 
 
-# ---------------- LOGIN GATE ----------------
-if "logged_in" not in st.session_state:
-    st.session_state.logged_in = False
-if "user_email" not in st.session_state:
-    st.session_state.user_email = None
-
-# Google OAuth se login (Streamlit ka built-in st.login/st.user) - agar
-# user Google se pehle se logged in hai (secrets.toml configured hone par)
-google_logged_in = False
-try:
-    if st.user.is_logged_in:
-        google_logged_in = True
-        st.session_state.logged_in = True
-        st.session_state.user_email = st.user.email
-        st.session_state.login_method = "google"
-except Exception:
-    # st.user tab error deta hai jab [auth] secrets.toml mein configure nahi hai -
-    # tab sirf email/password login available rahega
-    pass
-
-if not st.session_state.logged_in:
-    st.markdown('<p class="welcome-icon" style="text-align:center;">🦉</p>', unsafe_allow_html=True)
-    st.markdown('<p class="app-title" style="text-align:center;">News Summarizer</p>', unsafe_allow_html=True)
-    st.markdown('<p class="app-subtitle" style="text-align:center;">Sign in to start chatting with your news</p>', unsafe_allow_html=True)
-
-    # Google login button - sirf tab dikhega jab secrets.toml mein [auth] configured ho
-    try:
-        st.button("🔵 Continue with Google", use_container_width=True,
-                   on_click=lambda: st.login("google"))
-        st.markdown('<p style="text-align:center; color:#94A3B8; font-size:0.8rem;">or</p>',
-                    unsafe_allow_html=True)
-    except Exception:
-        pass
-
-    login_tab, signup_tab = st.tabs(["Log In", "Sign Up"])
-
-    with login_tab:
-        with st.form("login_form"):
-            login_email = st.text_input("Email", key="login_email")
-            login_password = st.text_input("Password", type="password", key="login_password")
-            submitted = st.form_submit_button("Log In", use_container_width=True, type="primary")
-            if submitted:
-                success, message = auth.login(login_email, login_password)
-                if success:
-                    st.session_state.logged_in = True
-                    st.session_state.user_email = login_email.strip().lower()
-                    st.session_state.login_method = "email"
-                    st.rerun()
-                else:
-                    st.error(message)
-
-    with signup_tab:
-        with st.form("signup_form"):
-            signup_email = st.text_input("Email", key="signup_email")
-            signup_password = st.text_input("Password", type="password", key="signup_password",
-                                             help="At least 6 characters")
-            signup_confirm = st.text_input("Confirm Password", type="password", key="signup_confirm")
-            submitted = st.form_submit_button("Sign Up", use_container_width=True, type="primary")
-            if submitted:
-                if signup_password != signup_confirm:
-                    st.error("Passwords do not match.")
-                else:
-                    success, message = auth.signup(signup_email, signup_password)
-                    if success:
-                        st.success(message + " Please log in from the 'Log In' tab.")
-                    else:
-                        st.error(message)
-
-    st.stop()  # App yahin ruk jaata hai - login ke bina neeche ka code chalega hi nahi
-
-
 # ---------------- CACHING ----------------
 @st.cache_resource(show_spinner=False)
 def load_embedding_model():
@@ -310,13 +238,6 @@ current = st.session_state.sessions[st.session_state.current_session_id]
 # ---------------- SIDEBAR ----------------
 with st.sidebar:
     st.markdown("### 🦉 News Summarizer")
-    st.caption(f"👤 {st.session_state.user_email}")
-    if st.button("🚪 Log out", use_container_width=True):
-        if st.session_state.get("login_method") == "google":
-            st.logout()
-        st.session_state.logged_in = False
-        st.session_state.user_email = None
-        st.rerun()
 
     # Gemini key - check environment variable (local .env) AND st.secrets
     # (Streamlit Cloud secrets), taaki chahe kahin bhi set ki ho, mil jaaye
