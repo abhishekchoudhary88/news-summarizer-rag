@@ -8,9 +8,19 @@ aur ye FREE hai - koi API key ki zaroorat nahi.
 Note: Dainik Bhaskar, Rajasthan Patrika, aur Aaj Tak ke apne direct RSS feed
 URLs reliably publicly documented nahi hain, isliye Google News ke
 site-specific search RSS ka use kiya gaya hai - ye stable aur accurate hai.
+
+Cloud servers (jaise Streamlit Cloud) se request bhejte time kuch websites
+default Python user-agent ko block kar deti hain (bot samajh ke). Isliye
+hum ek normal browser jaisa User-Agent header bhejte hain, taaki requests
+block na ho.
 """
 
 import feedparser
+
+USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+)
 
 RSS_FEEDS = {
     "BBC World": "http://feeds.bbci.co.uk/news/world/rss.xml",
@@ -29,18 +39,27 @@ def fetch_articles(selected_feeds=None, limit_per_feed=15):
     """
     RSS feeds se articles fetch karta hai.
 
-    Returns: list of dicts, har dict mein {title, summary, link, source}
+    Returns: (articles, errors)
+      - articles: list of dicts, har dict mein {title, summary, link, source}
+      - errors: list of strings, kis feed mein kya problem aayi (agar aayi)
     """
     if selected_feeds is None:
         selected_feeds = list(RSS_FEEDS.keys())
 
     all_articles = []
+    errors = []
+
     for feed_name in selected_feeds:
         url = RSS_FEEDS.get(feed_name)
         if not url:
             continue
         try:
-            feed = feedparser.parse(url)
+            feed = feedparser.parse(url, request_headers={"User-Agent": USER_AGENT})
+
+            if not feed.entries:
+                errors.append(f"{feed_name}: koi articles nahi mile (feed empty ya blocked)")
+                continue
+
             for entry in feed.entries[:limit_per_feed]:
                 all_articles.append({
                     "title": entry.get("title", ""),
@@ -49,6 +68,6 @@ def fetch_articles(selected_feeds=None, limit_per_feed=15):
                     "source": feed_name,
                 })
         except Exception as e:
-            print(f"Error fetching {feed_name}: {e}")
+            errors.append(f"{feed_name}: {str(e)}")
 
-    return all_articles
+    return all_articles, errors
